@@ -94,7 +94,7 @@ public class OrderController {
                     ),
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(
                             responseCode = "409",
-                            description = "Cart is empty, product is inactive, stock is insufficient, cart belongs to another user, or payment cannot be initiated",
+                            description = "Cart is empty, product is inactive, stock is insufficient, cart belongs to another user, payment cannot be initiated, or coupon code is invalid",
                             content = @Content
                     )
             }

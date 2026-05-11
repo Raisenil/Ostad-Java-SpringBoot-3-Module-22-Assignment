@@ -5,6 +5,7 @@ import com.example.ecommerce.backend.cart.entity.CartItem;
 import com.example.ecommerce.backend.cart.repository.CartRepository;
 import com.example.ecommerce.backend.cart.service.CartService;
 import com.example.ecommerce.backend.common.exception.ResourceConflictException;
+import com.example.ecommerce.backend.common.utils.CouponUtil;
 import com.example.ecommerce.backend.inventory.entity.Inventory;
 import com.example.ecommerce.backend.inventory.repository.InventoryRepository;
 import com.example.ecommerce.backend.order.dto.request.CreateOrderRequest;
@@ -77,12 +78,32 @@ public class OrderServiceImpl implements OrderService {
             order.getItems().add(toOrderItem(order, cartItem));
         });
 
-        order.setTotalAmount(calculateTotalAmount(order));
+        // Calculate base amount
+        Double baseAmount = calculateTotalAmount(order);
+        
+        // Calculate discount if coupon is provided
+        Double discountAmount = 0.0;
+        try {
+            discountAmount = CouponUtil.calculateDiscount(request.couponCode(), baseAmount);
+            if (discountAmount > 0) {
+                log.info("Coupon code applied for userId={}, couponCode={}, discount={}", 
+                        userId, request.couponCode(), discountAmount);
+            }
+        } catch (ResourceConflictException e) {
+            log.warn("Invalid coupon code for userId={}, couponCode={}", userId, request.couponCode());
+            throw e;
+        }
+        
+        // Set final total amount after discount
+        Double finalAmount = baseAmount - discountAmount;
+        order.setTotalAmount(finalAmount);
+        
         Order savedOrder = orderRepository.saveAndFlush(order);
         cartService.clearCart(userId, cart.getId());
         PaymentResponse paymentResponse = paymentService.initiatePayment(savedOrder.getId());
 
-        log.info("Checkout completed for userId={}, cartId={}, orderId={}", userId, cart.getId(), savedOrder.getId());
+        log.info("Checkout completed for userId={}, cartId={}, orderId={}, baseAmount={}, discount={}, finalAmount={}", 
+                userId, cart.getId(), savedOrder.getId(), baseAmount, discountAmount, finalAmount);
         return new OrderCheckoutResponse(orderMapper.toResponse(savedOrder), paymentResponse);
     }
 

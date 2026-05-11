@@ -6,12 +6,16 @@ import jakarta.validation.constraints.NotNull;
  * Request payload used to checkout a cart into a confirmed order.
  *
  * <p>The user identifier is intentionally excluded. Until authentication is
- * introduced, the controller supplies the temporary current user identifier.</p>
+ * introduced, the controller supplies the temporary current user identifier.
+ * 
+ * The coupon code is optional and can be null for orders without discounts.</p>
  *
  * @author Pial Kanti Samadder
  */
 public record CreateOrderRequest(
         @NotNull(message = "Cart ID is required")
-        Long cartId
+        Long cartId,
+        
+        String couponCode
 ) {
 }
