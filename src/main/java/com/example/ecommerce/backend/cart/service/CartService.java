@@ -2,6 +2,7 @@ package com.example.ecommerce.backend.cart.service;
 
 import com.example.ecommerce.backend.cart.dto.request.CartItemAddRequest;
 import com.example.ecommerce.backend.cart.dto.response.CartResponse;
+import com.example.ecommerce.backend.cart.dto.response.CartSuggestionResponse;
 
 /**
  * Service interface for shopping cart operations.
@@ -40,4 +41,16 @@ public interface CartService {
      * @throws com.example.ecommerce.backend.common.exception.ResourceConflictException when cart belongs to another user
      */
     void clearCart(Long userId, Long cartId);
+
+    /**
+     * Retrieves cart product suggestions for the user.
+     *
+     * <p>Returns up to 3 related products based on the user's current cart items.
+     * Suggestions are found by matching products in the same category with similar prices
+     * and names. Products already in the cart are excluded.</p>
+     *
+     * @param userId owner user identifier
+     * @return suggestion response containing up to 3 related products
+     */
+    CartSuggestionResponse getCartSuggestions(Long userId);
 }

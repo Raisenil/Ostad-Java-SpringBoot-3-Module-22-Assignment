@@ -2,6 +2,7 @@ package com.example.ecommerce.backend.cart.controller;
 
 import com.example.ecommerce.backend.cart.dto.request.CartItemAddRequest;
 import com.example.ecommerce.backend.cart.dto.response.CartResponse;
+import com.example.ecommerce.backend.cart.dto.response.CartSuggestionResponse;
 import com.example.ecommerce.backend.cart.service.CartService;
 import com.example.ecommerce.backend.common.constants.ApiEndpoints;
 import com.example.ecommerce.backend.common.dto.response.ApiResponse;
@@ -126,5 +127,34 @@ public class CartController {
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCart() {
         return ResponseEntity.ok(ApiResponse.success(cartService.getCart(CURRENT_USER_ID)));
+    }
+
+    /**
+     * Retrieves cart product suggestions for the current user.
+     *
+     * <p>Returns up to 3 related products based on items in the current user's cart.
+     * Suggestions are determined by matching products in the same category with similar
+     * prices and names. Products already in the cart are excluded.</p>
+     *
+     * @return response containing up to 3 suggested products
+     */
+    @Operation(
+            summary = "Get cart suggestions",
+            description = "Retrieves up to 3 product suggestions related to items in the current user's cart. " +
+                    "Suggestions are based on category match, price proximity (within 100), and name similarity.",
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "200",
+                            description = "Cart suggestions retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = CartSuggestionResponse.class)
+                            )
+                    )
+            }
+    )
+    @GetMapping("/suggestions")
+    public ResponseEntity<ApiResponse<CartSuggestionResponse>> getCartSuggestions() {
+        return ResponseEntity.ok(ApiResponse.success(cartService.getCartSuggestions(CURRENT_USER_ID)));
     }
 }

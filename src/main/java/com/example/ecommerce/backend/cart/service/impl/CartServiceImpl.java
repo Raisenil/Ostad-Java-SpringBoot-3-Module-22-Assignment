@@ -2,22 +2,30 @@ package com.example.ecommerce.backend.cart.service.impl;
 
 import com.example.ecommerce.backend.cart.dto.request.CartItemAddRequest;
 import com.example.ecommerce.backend.cart.dto.response.CartResponse;
+import com.example.ecommerce.backend.cart.dto.response.CartSuggestionResponse;
 import com.example.ecommerce.backend.cart.entity.Cart;
 import com.example.ecommerce.backend.cart.entity.CartItem;
 import com.example.ecommerce.backend.cart.mapper.CartMapper;
 import com.example.ecommerce.backend.cart.repository.CartRepository;
 import com.example.ecommerce.backend.cart.service.CartService;
 import com.example.ecommerce.backend.common.exception.ResourceConflictException;
+import com.example.ecommerce.backend.common.utils.StringSimilarityUtil;
 import com.example.ecommerce.backend.inventory.entity.Inventory;
 import com.example.ecommerce.backend.inventory.repository.InventoryRepository;
 import com.example.ecommerce.backend.product.entity.Product;
+import com.example.ecommerce.backend.product.mapper.ProductMapper;
 import com.example.ecommerce.backend.product.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Implementation of {@link CartService} for managing user shopping carts.
@@ -36,6 +44,7 @@ public class CartServiceImpl implements CartService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final CartMapper cartMapper;
+    private final ProductMapper productMapper;
 
     @Override
     @Transactional
@@ -95,6 +104,93 @@ public class CartServiceImpl implements CartService {
 
         cart.getItems().clear();
         cartRepository.saveAndFlush(cart);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartSuggestionResponse getCartSuggestions(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId).orElse(null);
+
+        // If no cart exists or cart is empty, return empty suggestions
+        if (cart == null || cart.getItems().isEmpty()) {
+            return new CartSuggestionResponse(userId, List.of());
+        }
+
+        // Get product IDs already in the cart
+        Set<Long> cartProductIds = new HashSet<>();
+        for (CartItem item : cart.getItems()) {
+            cartProductIds.add(item.getProduct().getId());
+        }
+
+        // Sort cart items by product price in ascending order
+        List<CartItem> sortedItems = cart.getItems().stream()
+                .sorted(Comparator.comparingDouble(item -> item.getProduct().getPrice()))
+                .toList();
+
+        List<Product> suggestions = new ArrayList<>();
+
+        // For each cart item, find up to 1 related product
+        for (CartItem cartItem : sortedItems) {
+            if (suggestions.size() >= 3) {
+                break; // Stop when we have 3 suggestions
+            }
+
+            Product cartProduct = cartItem.getProduct();
+            Product relatedProduct = findMostSimilarProduct(cartProduct, cartProductIds);
+
+            if (relatedProduct != null) {
+                suggestions.add(relatedProduct);
+                cartProductIds.add(relatedProduct.getId()); // Prevent duplicates
+            }
+        }
+
+        return new CartSuggestionResponse(userId, suggestions.stream()
+                .map(productMapper::toResponse)
+                .toList());
+    }
+
+    /**
+     * Finds the most similar product to the given product.
+     *
+     * <p>Matching criteria:
+     * 1. Same category
+     * 2. Price difference <= 100
+     * 3. Highest name similarity (lowest Levenshtein distance)</p>
+     *
+     * @param product the product to find similar products for
+     * @param excludeProductIds product IDs to exclude from the search (e.g., already in cart)
+     * @return the most similar product, or null if no match found
+     */
+    private Product findMostSimilarProduct(Product product, Set<Long> excludeProductIds) {
+        // Get all products in the same category
+        List<Product> categoryProducts = productRepository.findAll().stream()
+                .filter(p -> p.getCategory().getId().equals(product.getCategory().getId())
+                        && !p.getId().equals(product.getId())
+                        && !excludeProductIds.contains(p.getId())
+                        && Boolean.TRUE.equals(p.getIsActive()))
+                .toList();
+
+        Product bestMatch = null;
+        int bestDistance = Integer.MAX_VALUE;
+
+        for (Product candidate : categoryProducts) {
+            // Check if price difference is within 100
+            double priceDifference = Math.abs(product.getPrice() - candidate.getPrice());
+            if (priceDifference > 100) {
+                continue;
+            }
+
+            // Calculate Levenshtein distance for product names
+            int distance = StringSimilarityUtil.levenshteinDistance(product.getName(), candidate.getName());
+
+            // Track the product with the lowest distance (highest similarity)
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestMatch = candidate;
+            }
+        }
+
+        return bestMatch;
     }
 
     private Cart createCart(Long userId) {
