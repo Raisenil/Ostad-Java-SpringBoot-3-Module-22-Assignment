@@ -4,14 +4,25 @@
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
-COPY gradlew gradle/ build.gradle settings.gradle ./
-RUN chmod +x gradlew
+ARG GRADLE_VERSION=8.9
+ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
+ENV PATH="${GRADLE_HOME}/bin:${PATH}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip \
+    && unzip -q /tmp/gradle.zip -d /opt/gradle \
+    && rm -f /tmp/gradle.zip
+
+COPY gradle/ gradle/
+COPY build.gradle settings.gradle ./
 
 # Cache dependencies
-RUN ./gradlew --no-daemon dependencies
+RUN gradle --no-daemon dependencies
 
 COPY src/ src/
-RUN ./gradlew --no-daemon bootJar
+RUN gradle --no-daemon bootJar
 
 # Runtime stage
 FROM eclipse-temurin:25-jre
