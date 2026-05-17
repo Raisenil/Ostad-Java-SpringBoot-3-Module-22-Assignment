@@ -2,9 +2,9 @@ spring:
   # Database connection
   datasource:
     driver-class-name: org.postgresql.Driver
-    username: admin
-    password: admin@123
-    url: jdbc:postgresql://localhost:5432/ecommerce_db?createDatabaseIfNotExist=true
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin@123}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce_db?createDatabaseIfNotExist=true}
 
   # JPA related configurations
   jpa:
