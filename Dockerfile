@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage
-FROM gradle:8.9-jdk25 AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
 COPY gradlew gradle/ build.gradle settings.gradle ./
@@ -25,4 +25,3 @@ RUN set -eux; \
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-
