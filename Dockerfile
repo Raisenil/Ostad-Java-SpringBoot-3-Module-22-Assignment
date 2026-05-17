@@ -4,7 +4,7 @@
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
-ARG GRADLE_VERSION=8.9
+ARG GRADLE_VERSION=9.4.1
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="${GRADLE_HOME}/bin:${PATH}"
 
